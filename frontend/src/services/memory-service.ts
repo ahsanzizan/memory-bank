@@ -21,8 +21,10 @@ export const memoryService = {
 
   getEntries: async (): Promise<MemoryEntry[]> => {
     try {
-      const response = await axios.get<MemoryEntry[]>(`${API_URL}/entries`);
-      return response.data;
+      const response = await axios.get<{ entries: MemoryEntry[] }>(
+        `${API_URL}/entries`
+      );
+      return response.data.entries;
     } catch (error) {
       console.error("Error fetching entries:", error);
       throw error;
@@ -34,11 +36,10 @@ export const memoryService = {
     limit: number = 10
   ): Promise<SearchResult[]> => {
     try {
-      const response = await axios.post<SearchResult[]>(`${API_URL}/search`, {
-        query,
-        limit,
-      });
-      return response.data;
+      const response = await axios.get<{ results: SearchResult[] }>(
+        `${API_URL}/search?query=${query}&limit=${limit}`
+      );
+      return response.data.results.sort((a, b) => b.similarity - a.similarity);
     } catch (error) {
       console.error("Error searching entries:", error);
       throw error;

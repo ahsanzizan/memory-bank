@@ -23,14 +23,13 @@ export const useMemory = () => {
     }
   };
 
-  const saveEntry = async (content: string): Promise<MemoryEntry> => {
+  const saveEntry = async (content: string): Promise<void> => {
     setLoading(true);
     setError(null);
 
     try {
-      const newEntry = await memoryService.createEntry(content);
-      setEntries((prev) => [newEntry, ...prev]);
-      return newEntry;
+      await memoryService.createEntry(content);
+      await loadEntries();
     } catch (err) {
       setError("Failed to save entry");
       console.error(err);
@@ -40,14 +39,13 @@ export const useMemory = () => {
     }
   };
 
-  const searchMemories = async (query: string): Promise<MemoryEntry[]> => {
+  const searchMemories = async (query: string): Promise<void> => {
     setLoading(true);
     setError(null);
 
     try {
       const results = await memoryService.searchEntries(query);
       setSearchResults(results);
-      return results;
     } catch (err) {
       setError("Failed to search entries");
       console.error(err);
