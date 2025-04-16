@@ -74,40 +74,44 @@ export const SearchMemories = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {searchResults.map((entry, index) => (
-                <Card
-                  key={entry.id}
-                  className={cn(
-                    "overflow-hidden",
-                    index === 0 && "bg-primary text-background"
-                  )}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <div
-                        className={cn(
-                          "flex items-center text-sm",
-                          index === 0
-                            ? "text-background/75"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        <Clock className="mr-1 h-3.5 w-3.5" />
-                        <span>{formatDate(entry.timestamp)}</span>
-                      </div>
-                      <div className="flex items-center gap-x-2">
-                        <Badge variant="secondary">TOP MATCH</Badge>
-                        {index === 0 && (
+              {searchResults.map((entry, index) => {
+                const similarityPercent = Math.round(entry.similarity * 100);
+
+                return (
+                  <Card
+                    key={entry.id}
+                    className={cn(
+                      "overflow-hidden",
+                      index === 0 && "bg-primary text-background"
+                    )}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <div
+                          className={cn(
+                            "flex items-center text-sm",
+                            index === 0
+                              ? "text-background/75"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          <Clock className="mr-1 h-3.5 w-3.5" />
+                          <span>{formatDate(entry.timestamp)}</span>
+                        </div>
+                        <div className="flex items-center gap-x-2">
                           <Badge variant="default">
-                            {Math.round(entry.similarity * 100)}% match
+                            {similarityPercent}% match
                           </Badge>
-                        )}
+                          {similarityPercent > 70 && (
+                            <Badge variant="secondary">TOP MATCH</Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-sm">{entry.content}</p>
-                  </CardContent>
-                </Card>
-              ))}
+                      <p className="text-sm">{entry.content}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </ScrollArea>
