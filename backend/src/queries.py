@@ -1,10 +1,9 @@
-import json
 import sqlite3
 from datetime import datetime
-import numpy as np
 
 from constants import DB_PATH
-from utils import generate_embedding, cosine_similarity
+from pinecone_utils import search_embeddings, upsert_embedding
+from utils import generate_embedding
 
 
 def create_entry(content: str, timestamp: str):
@@ -31,9 +30,14 @@ def create_entry(content: str, timestamp: str):
 
         entry_id = cursor.lastrowid
 
-        cursor.execute('''
-        INSERT INTO embeddings (entry_id, embedding_json) VALUES (?, ?)               
-        ''', (entry_id, json.dumps(embedding)))
+        # Store in Pinecone
+        metadata = {
+            'content': content,
+            'timestamp': timestamp
+        }
+        if not upsert_embedding(entry_id, embedding, metadata):
+            conn.close()
+            return {'success': False, 'error': 'Failed to store embedding in Pinecone'}
 
         conn.commit()
         conn.close()
@@ -79,33 +83,35 @@ def search_entries(query: str, limit: int = 10):
         if query_embedding is None:
             return {'success': False, 'error': 'Failed to generate embedding'}
 
+        # Search in Pinecone
+        search_results = search_embeddings(query_embedding, limit)
+
+        if search_results is None:
+            return {'success': False, 'error': 'Failed to search in Pinecone'}
+
+        # Get full entry details from SQLite
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
-
         cursor = conn.cursor()
 
-        cursor.execute('SELECT entry_id, embedding_json FROM embeddings')
-        all_embeddings = {row['entry_id']: np.array(json.loads(
-            row['embedding_json'])) for row in cursor.fetchall()}
-
-        similarities = {
-            id: cosine_similarity(np.array(query_embedding), embedding)
-            for id, embedding in all_embeddings.items()
-        }
-
-        top_ids = sorted(similarities, key=similarities.get,
-                         reverse=True)[:limit]
+        entry_ids = [int(match['id']) for match in search_results['matches']]
+        if not entry_ids:
+            return {'success': True, 'results': []}
 
         cursor.execute(f'''
-        SELECT id, content, timestamp FROM entries WHERE id IN ({",".join('?' * len(top_ids))})               
-        ''', top_ids)
+        SELECT id, content, timestamp FROM entries WHERE id IN ({",".join('?' * len(entry_ids))})               
+        ''', entry_ids)
 
-        results = [{
-            'id': row['id'],
-            'content': row['content'],
-            'timestamp': row['timestamp'],
-            'similarity': similarities[row['id']]
-        } for row in cursor.fetchall()]
+        results = []
+        for row in cursor.fetchall():
+            match = next(m for m in search_results['matches'] if int(
+                m['id']) == row['id'])
+            results.append({
+                'id': row['id'],
+                'content': row['content'],
+                'timestamp': row['timestamp'],
+                'similarity': match['score']
+            })
 
         conn.close()
 

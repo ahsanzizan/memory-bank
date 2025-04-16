@@ -4,3 +4,4 @@ dotenv
 sentence_transformers 
 numpy
 db-sqlite3
+pinecone-client
